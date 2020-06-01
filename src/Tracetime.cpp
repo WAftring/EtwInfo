@@ -9,6 +9,17 @@
 
 #pragma comment(lib, "Shlwapi")
 
+//@TODO Add a flag for first event instead of just the header
+bool g_LocalTime = false;
+void ParseArgs(int argc, char* argv[])
+{
+	for(int i = 1; i < argc; i++)
+	{
+		if(strcmp(argv[i], "-l") == 0)
+			g_LocalTime = true;
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	char LogPath[MAX_PATH];
@@ -26,18 +37,20 @@ int main(int argc, char* argv[])
 	
 	if(argc < 2)
 	{
-		std::cout << "Prints the timestamp of the first and last event in relation to local system time." << std::endl;
+		std::cout << "Prints the timestamp of the first and last event in relation to source system time." << std::endl;
+		std::cout << "\t-l\tPrints the timestamps as callers system time" << std::endl;
 		return 1;
 	}
-	else 
+
+	if(argc <= 3)
+		ParseArgs(argc, argv);
+	
+	if(!PathFileExists(argv[1]))
 	{
-		if(!PathFileExists(argv[1]))
-		{
-			std::cout << "Cannot find specified file" << argv[1] << std::endl;
-			return 1;
-		}
-		strcpy_s(LogPath, MAX_PATH, argv[1]);
+		std::cout << "Cannot find specified file" << argv[1] << std::endl;
+		return 1;
 	}
+	strcpy_s(LogPath, MAX_PATH, argv[1]);
 
 	ZeroMemory(&trace, sizeof(EVENT_TRACE_LOGFILE));
 	trace.LogFileName = (LPSTR)LogPath;
@@ -50,67 +63,78 @@ int main(int argc, char* argv[])
 		goto cleanup;
 	}
 
-	cleanup:
 
-	if(INVALID_PROCESSTRACE_HANDLE != hTrace)
-	{
-		status = CloseTrace(hTrace);
-	}
 	// It looks like I can just use the headers for this information 
 	// But I do need some additional logic for files that have rolled
 	// to find the first event... 
 	ft.dwLowDateTime = pHeader->StartTime.LowPart;
 	ft.dwHighDateTime = pHeader->StartTime.HighPart;
 	FileTimeToSystemTime(&ft, &st);
-	SystemTimeToTzSpecificLocalTime(NULL, &st, &stLocal);
-	sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
-		st.wMonth,
-		st.wDay,
-		st.wYear,
-		st.wHour,
-		st.wMinute,    
-		st.wSecond);
-	sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
-		stLocal.wMonth,
-		stLocal.wDay,
-		stLocal.wYear,
-		stLocal.wHour,
-		stLocal.wMinute,    
-		stLocal.wSecond);
+	if(!g_LocalTime)
+	{
+		sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
+			st.wMonth,
+			st.wDay,
+			st.wYear,
+			st.wHour,
+			st.wMinute,    
+			st.wSecond);
+		std::cout << "TraceTime: SystemTime\n============\n"; 
+		std::cout << "\tFirst Timestamp: " << buffer << std::endl;
 
-	std::cout << "TraceTime: SystemTime\n============\n"; 
-	std::cout << "\tFirst Timestamp: " << buffer << std::endl;
+		ft.dwLowDateTime = pHeader->EndTime.LowPart;
+		ft.dwHighDateTime = pHeader->EndTime.HighPart;
+		FileTimeToSystemTime(&ft, &st);
+		sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
+			st.wMonth,
+			st.wDay,
+			st.wYear,
+			st.wHour,
+			st.wMinute,    
+			st.wSecond);
 
-	ft.dwLowDateTime = pHeader->EndTime.LowPart;
-	ft.dwHighDateTime = pHeader->EndTime.HighPart;
-	FileTimeToSystemTime(&ft, &st);
-	SystemTimeToTzSpecificLocalTime(NULL, &st, &stLocal);
-	sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
-		st.wMonth,
-		st.wDay,
-		st.wYear,
-		st.wHour,
-		st.wMinute,    
-		st.wSecond);
+		std::cout << "\tLast  Timestamp: " << buffer << std::endl;
+	}
+	else
+	{
+		std::cout << "TraceTime: SystemTime Local\n============\n"; 
 
-	std::cout << "\tLast  Timestamp: " << buffer << std::endl;
+		SystemTimeToTzSpecificLocalTime(NULL, &st, &stLocal);
+		sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
+			stLocal.wMonth,
+			stLocal.wDay,
+			stLocal.wYear,
+			stLocal.wHour,
+			stLocal.wMinute,    
+			stLocal.wSecond);
 
-	std::cout << std::endl;
 
-	std::cout << "TraceTime: SystemTime Local\n============\n"; 
-	std::cout << "\tFirst Timestamp: " << bufferLocal << std::endl;
-	sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
-		stLocal.wMonth,
-		stLocal.wDay,
-		stLocal.wYear,
-		stLocal.wHour,
-		stLocal.wMinute,    
-		stLocal.wSecond);
+		std::cout << "\tFirst Timestamp: " << bufferLocal << std::endl;
 	
-	std::cout << "\tLast  Timestamp: " << bufferLocal << std::endl;
-	
+		//Doing this to get the endtime from our header
+		ft.dwLowDateTime = pHeader->EndTime.LowPart;
+		ft.dwHighDateTime = pHeader->EndTime.HighPart;
+		FileTimeToSystemTime(&ft, &st);
+		SystemTimeToTzSpecificLocalTime(NULL, &st, &stLocal);
+		sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
+			stLocal.wMonth,
+			stLocal.wDay,
+			stLocal.wYear,
+			stLocal.wHour,
+			stLocal.wMinute,    
+			stLocal.wSecond);
+
+		std::cout << "\tLast  Timestamp: " << bufferLocal << std::endl;
+	}	
+	cleanup:
+
+	if(INVALID_PROCESSTRACE_HANDLE != hTrace)
+	{
+		status = CloseTrace(hTrace);
+	}
 	delete(buffer);
 	delete(bufferLocal);
+
 	return 0;
 }
 
