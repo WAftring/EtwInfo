@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 	trace.BufferCallback = (PEVENT_TRACE_BUFFER_CALLBACK)(ProcessBuffer);
 	trace.ProcessTraceMode = PROCESS_TRACE_MODE_EVENT_RECORD;
 	trace.BufferSize = sizeof(PEVENT_RECORD);
-	std::cout << "Opening trace:" << LogPath << std::endl;
+	std::cout << "Opening trace: " << LogPath << std::endl;
 	hTrace = OpenTraceA(&trace);
 	if((TRACEHANDLE)INVALID_HANDLE_VALUE == hTrace)
 	{
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
 			stUserLocal.wMinute,    
 			stUserLocal.wSecond);
 
-		std::cout << "\tLast  Timestamp: " << bufferLocal << std::endl;
+		std::cout << "\t Last Timestamp: " << bufferLocal << std::endl;
 	}
 	else
 	{
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 			stTraceLocal.wMinute,    
 			stTraceLocal.wSecond);
 
-		std::cout << "\tLast  Timestamp: " << buffer << std::endl;
+		std::cout << "\t Last Timestamp: " << buffer << std::endl;
 
 	}	
 	cleanup:
