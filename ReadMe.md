@@ -7,6 +7,7 @@
 - -l	Prints the timestamps as your system time
 - -r	Checks for the first timestamp in files that have rolled
 - -p	Prepends the timestamps to the file
+- -c 	Combined with -p on a directory will avoid asking for confirmation
 - -?	Displays help
 
 **EXAMPLE:**
