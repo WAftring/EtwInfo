@@ -6,34 +6,62 @@
 #include <tdh.h>
 #include <shlwapi.h>
 #include <iostream>
+#include <string>
 
 #pragma comment(lib, "Shlwapi")
 
-//@TODO Add a flag for first event instead of just the header
+// Cmd byte flags
+#define FLAG_LOCALTIME	0x1
+#define FLAG_CHECKROLL	0x2
+#define FLAG_HELP 	0x4
+#define FLAG_PREPEND	0x8
+
+/* TODO's 
+- @TODO Add functionality for all files in the directory
+- @TODO Add options for other file types
+	1. .txt files
+	2. .pcap/pcapng
+*/
 
 //Global variables
-bool g_LocalTime = false;
-bool g_CheckRoll = false;
+BYTE CmdFlags = 0;
 bool g_FoundPidZero = false;
 bool g_FoundRoll = false;
 FILETIME g_FirstRolledTimestamp;
+
 //Forward calling functions
 void WINAPI ProcessEvent(PEVENT_RECORD pEvent);
 bool WINAPI ProcessBuffer(PEVENT_TRACE_LOGFILE pBuffer);
-void ParseArgs(int argc, char* argv[])
+bool ParseArgs(int argc, char* argv[], std::string &LogPath)
 {
+	bool bFoundFile = false;
+	bool bHelp;
 	for(int i = 1; i < argc; i++)
 	{
 		if(strcmp(argv[i], "-l") == 0)
-			g_LocalTime = true;
+			CmdFlags |= FLAG_LOCALTIME;
 		if(strcmp(argv[i], "-r") == 0)
-			g_CheckRoll = true;
+			CmdFlags |= FLAG_CHECKROLL;
+		if(strcmp(argv[i], "-p") == 0)
+			CmdFlags |= FLAG_PREPEND;
+		if(strcmp(argv[i], "-?") == 0)
+		{
+			CmdFlags |= FLAG_HELP;
+			bFoundFile = false;
+		}
+		if(PathFileExists(argv[i]) && (CmdFlags & FLAG_HELP) != FLAG_HELP)
+		{
+			bFoundFile = true;	
+			LogPath = argv[i];
+		}
 	}
+
+	return bFoundFile;
 }
 
 int main(int argc, char* argv[])
 {
-	char LogPath[MAX_PATH];
+	std::string LogPath;
 	ULONG status = ERROR_SUCCESS;
 	EVENT_TRACE_LOGFILE trace;
 	TRACE_LOGFILE_HEADER* pHeader = &trace.LogfileHeader;
@@ -41,32 +69,76 @@ int main(int argc, char* argv[])
 	HRESULT hr = S_OK;
 	FILETIME ft;
 	SYSTEMTIME st;
-	SYSTEMTIME stTraceLocal;
-	SYSTEMTIME stUserLocal;
+	SYSTEMTIME stFirstTS;
+	SYSTEMTIME stLastTS;
 	ULONGLONG NanoSeconds = 0;
-	char *buffer = new char[256];
-	char *bufferLocal = new char[256];
+	char *bufferFirstTimeStamp = new char[256];
+	char *bufferLastTimeStamp = new char[256];
 	
+	std::cout << std::endl; //This is just to give some padding to the text
 	if(argc < 2)
 	{
 		std::cout << "Prints the timestamp of the first and last event in relation to source system time." << std::endl;
 		std::cout << "\t-l\tPrints the timestamps as callers system time" << std::endl;
 		std::cout << "\t-r\tChecks for the first timestamp in files that have rolled" << std::endl;
+		std::cout << "\t-p\tPrepends the timestamps to the file" << std::endl;
+		std::cout << "\t-?\tDisplay help" << std::endl;
 		return 1;
 	}
 
-	if(argc > 2)
-		ParseArgs(argc, argv);
-	
-	if(!PathFileExists(argv[1]))
+	if(!ParseArgs(argc, argv, LogPath))
 	{
-		std::cout << "Cannot find specified file" << argv[1] << std::endl;
+
+		//Add logic for printing the help if flag is set
+		if((CmdFlags & FLAG_HELP) == FLAG_HELP)
+		{
+			std::cout << "DESCRIPTION: Quickly gets timestamps from ETL files to avoid parsing the full file to get timestamps" << std::endl;
+			std::cout << std::endl;
+			std::cout << "OPTIONS:" << std::endl;
+			std::cout << "	-l	Prints the timestamps as your system time" << std::endl;
+			std::cout << "	-r	Checks for the first timestamp in files that have rolled" << std::endl;
+			std::cout << "	-p	Prepends the timestamps to the file" << std::endl;
+			std::cout << "	-?	Displays help" << std::endl;
+			std::cout << std::endl;
+			std::cout << "EXAMPLE:" << std::endl;
+			std::cout << std::endl;
+			std::cout << "Called with sample file:" << std::endl;
+			std::cout << std::endl;
+			std::cout << "C:\\> TraceTime.exe C:\\Sample_Trace.etl" << std::endl;
+			std::cout << std::endl;
+			std::cout << "Opening trace: C:\\Sample_trace.etl" << std::endl;
+			std::cout << "TraceTime: SystemTime" << std::endl;
+			std::cout << "============" << std::endl;
+			std::cout << "	First Timestamp: 04/16/2020 22:11:09" << std::endl;
+			std::cout << "	Last  Timestamp: 04/16/2020 22:12:38" << std::endl;
+			std::cout << std::endl;
+			std::cout << std::endl;
+			std::cout << "C:\\> TraceTime.exe -r -p C:\\Trace0.etl" << std::endl;
+			std::cout <<  std::endl;
+			std::cout << "Opening trace: C:\\Trace0.etl" << std::endl;
+			std::cout << "TraceTime: SystemTime" << std::endl;
+			std::cout << "============" << std::endl;
+			std::cout << "        First Timestamp: 05/20/2020 09:40:30" << std::endl;
+			std::cout << "         Last Timestamp: 05/20/2020 09:47:23" << std::endl;
+			std::cout << "Old filename: C:\\Trace0.etl" << std::endl;
+			std::cout << "New filename: C:\\09h40m-09h47m_Trace0.etl" << std::endl;
+			std::cout << std::endl;	
+			std::cout << std::endl;
+			std::cout << "UPDATES:" << std::endl;
+			std::cout << "- 06-01-2020: Added flags for local systemtime vs systemtime" << std::endl;
+			std::cout << "- 06-03-2020: Added logic for checking if file rolled and grabbing rolled timestamp" << std::endl;
+			std::cout << "- 06-04-2020: Added help flag" << std::endl;
+			std::cout << "- 06-04-2020: Added prepend flag" << std::endl;
+						
+
+		}
+		else 
+			std::cout << "No valid files entered" << std::endl;
 		return 1;
 	}
-	strcpy_s(LogPath, MAX_PATH, argv[1]);
 
 	ZeroMemory(&trace, sizeof(EVENT_TRACE_LOGFILE));
-	trace.LogFileName = (LPSTR)LogPath;
+	trace.LogFileName = (LPSTR)LogPath.c_str();
 	trace.EventRecordCallback = (PEVENT_RECORD_CALLBACK)(ProcessEvent);
 	trace.BufferCallback = (PEVENT_TRACE_BUFFER_CALLBACK)(ProcessBuffer);
 	trace.ProcessTraceMode = PROCESS_TRACE_MODE_EVENT_RECORD;
@@ -79,10 +151,8 @@ int main(int argc, char* argv[])
 		goto cleanup;
 	}
 
-	// It looks like I can just use the headers for this information 
-	// But I do need some additional logic for files that have rolled
-	// to find the first event... 
-	if(g_CheckRoll)
+
+	if((CmdFlags & FLAG_CHECKROLL) == FLAG_CHECKROLL)
 	{
 		status = ProcessTrace(&hTrace, 1, 0, 0);
 		if(status != ERROR_SUCCESS && status != ERROR_CANCELLED)
@@ -102,74 +172,111 @@ int main(int argc, char* argv[])
 
 	FileTimeToSystemTime(&ft, &st);
 
-	if(g_LocalTime)
+	if((CmdFlags & FLAG_LOCALTIME) == FLAG_LOCALTIME)
 	{
 		std::cout << "TraceTime: SystemTime Local\n============\n"; 
 
-		SystemTimeToTzSpecificLocalTime(NULL, &st, &stUserLocal);
-		sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
-			stUserLocal.wMonth,
-			stUserLocal.wDay,
-			stUserLocal.wYear,
-			stUserLocal.wHour,
-			stUserLocal.wMinute,    
-			stUserLocal.wSecond);
+		SystemTimeToTzSpecificLocalTime(NULL, &st, &stFirstTS);
+		sprintf(bufferFirstTimeStamp, "%02d/%02d/%02d %02d:%02d:%02d",
+			stFirstTS.wMonth,
+			stFirstTS.wDay,
+			stFirstTS.wYear,
+			stFirstTS.wHour,
+			stFirstTS.wMinute,    
+			stFirstTS.wSecond);
 
 
-		std::cout << "\tFirst Timestamp: " << bufferLocal << std::endl;
+		std::cout << "\tFirst Timestamp: " << bufferFirstTimeStamp << std::endl;
 	
 		//Doing this to get the endtime from our header
 		ft.dwLowDateTime = pHeader->EndTime.LowPart;
 		ft.dwHighDateTime = pHeader->EndTime.HighPart;
 		FileTimeToSystemTime(&ft, &st);
-		SystemTimeToTzSpecificLocalTime(NULL, &st, &stUserLocal);
-		sprintf(bufferLocal, "%02d/%02d/%02d %02d:%02d:%02d",
-			stUserLocal.wMonth,
-			stUserLocal.wDay,
-			stUserLocal.wYear,
-			stUserLocal.wHour,
-			stUserLocal.wMinute,    
-			stUserLocal.wSecond);
+		SystemTimeToTzSpecificLocalTime(NULL, &st, &stLastTS);
+		sprintf(bufferLastTimeStamp, "%02d/%02d/%02d %02d:%02d:%02d",
+			stLastTS.wMonth,
+			stLastTS.wDay,
+			stLastTS.wYear,
+			stLastTS.wHour,
+			stLastTS.wMinute,    
+			stLastTS.wSecond);
 
-		std::cout << "\t Last Timestamp: " << bufferLocal << std::endl;
+		std::cout << "\t Last Timestamp: " << bufferLastTimeStamp << std::endl;
 	}
 	else
 	{
 
-		SystemTimeToTzSpecificLocalTime(&pHeader->TimeZone, &st, &stTraceLocal);
-		sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
-			stTraceLocal.wMonth,
-			stTraceLocal.wDay,
-			stTraceLocal.wYear,
-			stTraceLocal.wHour,
-			stTraceLocal.wMinute,    
-			stTraceLocal.wSecond);
+		SystemTimeToTzSpecificLocalTime(&pHeader->TimeZone, &st, &stFirstTS);
+		sprintf(bufferFirstTimeStamp, "%02d/%02d/%02d %02d:%02d:%02d",
+			stFirstTS.wMonth,
+			stFirstTS.wDay,
+			stFirstTS.wYear,
+			stFirstTS.wHour,
+			stFirstTS.wMinute,    
+			stFirstTS.wSecond);
 		std::cout << "TraceTime: SystemTime\n============\n"; 
-		std::cout << "\tFirst Timestamp: " << buffer << std::endl;
+		std::cout << "\tFirst Timestamp: " << bufferFirstTimeStamp << std::endl;
 
 		ft.dwLowDateTime = pHeader->EndTime.LowPart;
 		ft.dwHighDateTime = pHeader->EndTime.HighPart;
 		FileTimeToSystemTime(&ft, &st);
-		SystemTimeToTzSpecificLocalTime(&pHeader->TimeZone, &st, &stTraceLocal);
-		sprintf(buffer, "%02d/%02d/%02d %02d:%02d:%02d",
-			stTraceLocal.wMonth,
-			stTraceLocal.wDay,
-			stTraceLocal.wYear,
-			stTraceLocal.wHour,
-			stTraceLocal.wMinute,    
-			stTraceLocal.wSecond);
+		SystemTimeToTzSpecificLocalTime(&pHeader->TimeZone, &st, &stLastTS);
+		sprintf(bufferLastTimeStamp, "%02d/%02d/%02d %02d:%02d:%02d",
+			stLastTS.wMonth,
+			stLastTS.wDay,
+			stLastTS.wYear,
+			stLastTS.wHour,
+			stLastTS.wMinute,    
+			stLastTS.wSecond);
 
-		std::cout << "\t Last Timestamp: " << buffer << std::endl;
+		std::cout << "\t Last Timestamp: " << bufferLastTimeStamp << std::endl;
 
 	}	
+
+
+
+	if((CmdFlags & FLAG_PREPEND) == FLAG_PREPEND)
+	{
+		// We will append the file name to the start and end TS
+		int res = 0;
+		char szNewPath[MAX_PATH];
+		char szDrive[MAX_PATH];
+		char szDir[MAX_PATH];
+		char szFnameOld[MAX_PATH];
+		char szFnameNew[MAX_PATH];
+		char szExt[MAX_PATH];
+		char szPrefix[256];
+		
+		_splitpath_s(LogPath.c_str(), szDrive, MAX_PATH, szDir, MAX_PATH,
+				szFnameOld, MAX_PATH, szExt, MAX_PATH);
+		sprintf(szFnameNew, "%02dh%02dm-%02dh%02dm_%s",
+				stFirstTS.wHour,
+				stFirstTS.wMinute,
+				stLastTS.wHour,
+				stLastTS.wMinute,
+				szFnameOld);
+		_makepath_s(szNewPath, MAX_PATH, szDrive, szDir, szFnameNew, szExt);
+		res = rename(LogPath.c_str(), szNewPath);
+		if(res != 0)	
+			std::cout << "Error prepending file: " << LogPath << "failed with error " << res << std::endl;
+		else
+		{
+			std::cout << "Old filename: " << LogPath << std::endl;
+			std::cout << "New filename: " << szNewPath << std::endl;
+		}
+			
+	}
+
 	cleanup:
 
 	if(INVALID_PROCESSTRACE_HANDLE != hTrace)
 	{
 		status = CloseTrace(hTrace);
 	}
-	delete(buffer);
-	delete(bufferLocal);
+
+
+	delete(bufferFirstTimeStamp);
+	delete(bufferLastTimeStamp);
 
 	return 0;
 }
