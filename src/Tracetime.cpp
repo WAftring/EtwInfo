@@ -225,9 +225,13 @@ void ReadTrace(const std::string &LogPath)
 		status = CloseTrace(hTrace);
 	}
 
-
+	//Cleaning up the global variables and buffers
 	delete(bufferFirstTimeStamp);
 	delete(bufferLastTimeStamp);
+	g_FoundPidZero = false;
+	g_FoundRoll = false;
+
+	
 	std::cout << std::endl;
 
 
