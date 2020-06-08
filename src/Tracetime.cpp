@@ -289,13 +289,6 @@ int main(int argc, char* argv[])
 			std::cout << "	First Timestamp: 04/16/2020 22:11:09" << std::endl;
 			std::cout << "	Last  Timestamp: 04/16/2020 22:12:38" << std::endl;
 			std::cout << std::endl;
-			std::cout <<  std::endl;
-			std::cout << "Opening trace: C:\\Trace2.etl" << std::endl;
-			std::cout << "TraceTime: SystemTime" << std::endl;
-			std::cout << "============" << std::endl;
-			std::cout << "First Timestamp: 05/04/2020 07:36:26" << std::endl;
-			std::cout << " Last Timestamp: 05/20/2020 10:02:14" << std::endl;
-			std::cout << std::endl;
 			std::cout << "C:\\> TraceTime.exe -r -p C:\\Trace0.etl" << std::endl;
 			std::cout <<  std::endl;
 			std::cout << "Opening trace: C:\\Trace0.etl" << std::endl;
