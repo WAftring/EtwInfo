@@ -45,3 +45,4 @@ New filename: C:\09h40m-09h47m_Trace0.etl
 - 06-03-2020: Added logic for checking if file rolled and grabbing rolled timestamp
 - 06-04-2020: Added help flag
 - 06-04-2020: Added prepend flag
+- 04-08-2021: Changed building to /MT 
