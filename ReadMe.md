@@ -1,46 +1,52 @@
-## TraceTime.exe
+## EtwInfo
 
-**DESCRIPTION:** Quickly gets timestamps from ETL files to avoid parsing the full file to get timestamps
+**DESCRIPTION:** Quickly gets information from ETL files to avoid parsing the full file.
 
 **OPTIONS:**
 
-- -l	Prints the timestamps as your system time
-- -r	Checks for the first timestamp in files that have rolled
-- -p	Prepends the timestamps to the file
-- -c 	Combined with -p on a directory will avoid asking for confirmation
-- -?	Displays help
+```
+-t      Print time info about the trace
+-s      Print trace statistics
+-o      Print OS info about the machine that collected the traces
+-a      Prints all of the above
+```
 
 **EXAMPLE:**
 
 Called with sample file:
 
 ```
-C:\> TraceTime.exe C:\Sample_Trace.etl
+C:\> EtwInfo.exe -a .\Netmon.etl
 
-Opening trace: C:\Sample_trace.etl
-TraceTime: SystemTime
+OS Information
+==========
+        Version: 10.0.20348
+        CPU Architecture: x64
+        # Processors: 2
+        CPU MHz: 2594
+        Timer Resolution: 0.391 per 25 CPU cycles
+        Boot time: 04/24/2023 06:36:52
+Trace Statistics:
+==========
+        Max file size (mb): 1024
+        Buffer size: 8192
+        Buffers written: 1
+        Buffers lost: 0
+        Data written:
+                B: 8192
+                Kb: 8
+                Mb: 0
+                Gb: 0
+SystemTime
 ============
-        First Timestamp: 04/16/2020 22:11:09
-        Last  Timestamp: 04/16/2020 22:12:38
-```
-
-Called with prepend and check roll:
-
-```
-C:\> TraceTime.exe -r -p C:\Trace0.etl
-
-Opening trace: C:\Trace0.etl
-TraceTime: SystemTime
-============
-        First Timestamp: 05/20/2020 09:40:30
-         Last Timestamp: 05/20/2020 09:47:23
-Old filename: C:\Trace0.etl
-New filename: C:\09h40m-09h47m_Trace0.etl
+        First Timestamp: 07/03/2023 07:47:09
+         Last Timestamp: 07/03/2023 07:54:18
 ```
 
 
 **UPDATES:**
 
+- 09-19-2023: Reworked for a ton of new info + rename
 - 06-01-2020: Added flags for local systemtime vs systemtime
 - 06-03-2020: Added logic for checking if file rolled and grabbing rolled timestamp
 - 06-04-2020: Added help flag
